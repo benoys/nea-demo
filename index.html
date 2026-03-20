@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>NSA·ASSIST — Call Centre</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F1EB;--surface:#FDFCF9;--border:#C8C2B4;--border-strong:#8A8278;
+  --text:#1A1814;--text-muted:#6B6560;--text-faint:#9E9891;
+  --accent:#1C4ED8;--accent-light:#DBEAFE;--accent-muted:#3B82F6;
+  --warning:#B45309;--warning-light:#FEF3C7;
+  --success:#065F46;--success-light:#D1FAE5;
+  --tag-bg:#E8E4DC;
+  --shadow:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 6px rgba(0,0,0,.07);
+  --radius:6px;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);
+  font-size:13px;line-height:1.5;overflow:hidden;height:100vh}
+
+/* ── Panels ────────────────────────────────────────────────────────────────── */
+.step-panel{display:none;height:100vh}
+.step-panel.visible{display:block}
+.sso-panel{display:none;height:100vh;overflow-y:auto}
+.sso-panel.visible{display:block}
+
+/* ── Shell grid ────────────────────────────────────────────────────────────── */
+.shell{display:grid;grid-template-columns:200px 1fr 300px;
+  grid-template-rows:44px 1fr;height:100%;background:var(--surface)}
+
+/* ── Topbar ────────────────────────────────────────────────────────────────── */
+.topbar{grid-column:1/-1;border-bottom:1.5px solid var(--border);
+  display:flex;align-items:center;background:var(--surface)}
+.topbar-brand{width:200px;padding:0 14px;border-right:1.5px solid var(--border);
+  display:flex;align-items:center;gap:8px;font-family:var(--mono);
+  font-size:11px;font-weight:600;letter-spacing:.08em;height:100%;flex-shrink:0}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:#DC2626;
+  animation:pulse 1.4s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.topbar-title{font-size:12px;font-weight:600}
+.topbar-center{flex:1;padding:0 16px;display:flex;align-items:center;gap:10px;overflow:hidden}
+.topbar-pill{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:3px;
+  background:var(--tag-bg);color:var(--text-muted);border:1px solid var(--border);white-space:nowrap}
+.live-pill{background:#FEE2E2;color:#991B1B;border-color:#FECACA}
+.caller-pill{background:#DCFCE7;color:#15803D;border-color:#86EFAC}
+.topbar-right{padding:0 14px;display:flex;align-items:center;gap:10px;
+  font-size:11px;color:var(--text-muted);border-left:1.5px solid var(--border)}
+.avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:600}
+
+/* ── Left nav ──────────────────────────────────────────────────────────────── */
+.leftnav{border-right:1.5px solid var(--border);overflow-y:auto;
+  background:var(--surface);padding:12px 0;display:flex;flex-direction:column}
+.nav-section-label{font-family:var(--mono);font-size:9px;letter-spacing:.14em;
+  color:var(--text-faint);padding:6px 14px 4px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:8px;padding:6px 14px;
+  font-size:11px;color:var(--text-muted);border-left:2px solid transparent;cursor:pointer}
+.nav-item.active{background:var(--accent-light);color:var(--accent);
+  border-left-color:var(--accent);font-weight:500}
+.nav-badge{margin-left:auto;font-family:var(--mono);font-size:9px;
+  background:var(--accent);color:white;border-radius:10px;padding:1px 5px}
+.nav-divider{height:1px;background:var(--border);margin:6px 0}
+.wf-note{font-family:var(--mono);font-size:9px;color:var(--text-faint);
+  border-top:1px dashed var(--border);padding:6px 10px;margin-top:auto}
+
+/* ── Chat area ─────────────────────────────────────────────────────────────── */
+.chat-area{display:flex;flex-direction:column;overflow:hidden;
+  border-right:1.5px solid var(--border);background:var(--bg)}
+.chat-header{background:var(--surface);border-bottom:1.5px solid var(--border);
+  padding:9px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.chat-header-title{font-size:12px;font-weight:600}
+.chat-header-sub{font-size:11px;color:var(--text-muted)}
+.context-pills{display:flex;gap:5px;margin-left:auto}
+.ctx-pill{font-family:var(--mono);font-size:9px;padding:2px 7px;
+  border-radius:3px;border:1px solid;white-space:nowrap}
+.ctx-pill.stt{background:#EDE9FE;color:#6D28D9;border-color:#C4B5FD}
+.ctx-pill.ai {background:#DCFCE7;color:#15803D;border-color:#86EFAC}
+.ctx-pill.ref{background:#FEF3C7;color:#B45309;border-color:#FCD34D}
+.hold-bar{background:#FEF9C3;border-bottom:1.5px solid #FCD34D;padding:7px 14px;
+  display:flex;align-items:center;gap:10px;font-size:11px;color:var(--warning);
+  font-weight:500;flex-shrink:0}
+.chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:6px}
+
+/* ── Transcript lines ─────────────────────────────────────────────────────── */
+.tl-line{display:flex;align-items:baseline;gap:8px;padding:6px 10px;
+  border-radius:4px;font-size:12.5px;line-height:1.55}
+.tl-line.caller {background:var(--surface);border:1px solid var(--border)}
+.tl-line.officer{background:var(--accent-light);border:1px solid #BFDBFE}
+.tl-label-caller{font-family:var(--mono);font-size:9px;font-weight:600;color:#991B1B;
+  background:#FEE2E2;border:1px solid #FECACA;border-radius:2px;
+  padding:1px 5px;flex-shrink:0;letter-spacing:.06em;margin-top:2px}
+.tl-label-officer{font-family:var(--mono);font-size:9px;font-weight:600;color:#1D4ED8;
+  background:#DBEAFE;border:1px solid #93C5FD;border-radius:2px;
+  padding:1px 5px;flex-shrink:0;letter-spacing:.06em;margin-top:2px}
+.tl-ts{font-family:var(--mono);font-size:9px;color:var(--text-faint);flex-shrink:0;white-space:nowrap}
+.tl-text{flex:1;color:var(--text)}
+.tl-cursor{display:inline-block;width:2px;height:13px;background:var(--accent);
+  border-radius:1px;margin-left:2px;vertical-align:middle;
+  animation:blink .65s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.tl-foreign{color:var(--text);font-weight:500}
+.tl-translation{color:var(--text-faint);font-style:italic;font-size:11px}
+.tl-divider{display:flex;align-items:center;gap:8px;padding:3px 0;margin:4px 0}
+.tl-divider::before,.tl-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.tl-divider span{font-family:var(--mono);font-size:9px;color:var(--text-faint);
+  white-space:nowrap;letter-spacing:.06em;padding:0 6px}
+
+/* ── AI banners ────────────────────────────────────────────────────────────── */
+.ai-banner{display:flex;align-items:center;gap:8px;padding:8px 12px;
+  border-radius:var(--radius);margin:2px 0;font-size:12px;font-weight:500}
+.warn-banner   {background:var(--warning-light);border:1.5px solid #FCD34D;color:var(--warning)}
+.ok-banner     {background:var(--success-light);border:1.5px solid #6EE7B7;color:var(--success)}
+.default-banner{background:var(--accent-light);border:1.5px solid var(--accent-muted);color:var(--accent)}
+.conf-badge{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;
+  background:#DCFCE7;color:#15803D;border:1px solid #6EE7B7;margin-left:auto}
+
+/* ── Input area ────────────────────────────────────────────────────────────── */
+.chat-input-area{border-top:1.5px solid var(--border);background:var(--surface);
+  padding:9px 12px;flex-shrink:0}
+.input-context-bar{display:flex;gap:6px;margin-bottom:7px;flex-wrap:wrap;align-items:center}
+.active-label{font-family:var(--mono);font-size:9px;color:var(--text-faint);margin-right:2px}
+.input-ctx-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;
+  padding:2px 7px;border-radius:3px;border:1px solid var(--border);
+  background:var(--tag-bg);color:var(--text-muted)}
+.input-ctx-item .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.live-dot{background:#DC2626}.stt-dot{background:#7C3AED}
+.src-dot{background:#065F46}.ref-dot{background:#1C4ED8}
+.action-bar{display:flex;gap:8px;margin-bottom:8px}
+.input-row{display:flex;gap:8px;align-items:flex-end}
+.input-box{flex:1;border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:7px 10px;font-size:12px;font-family:var(--sans);background:var(--bg);
+  color:var(--text);resize:none;height:36px}
+.btn-icon{width:36px;height:36px;border-radius:var(--radius);background:var(--accent);
+  color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+.btn{padding:6px 14px;border-radius:var(--radius);font-size:12px;font-weight:500;
+  cursor:pointer;border:1.5px solid;font-family:var(--sans);
+  display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-primary  {background:var(--accent);color:white;border-color:var(--accent)}
+.btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border)}
+.btn-ghost    {background:transparent;color:var(--text-muted);border-color:transparent;font-size:11px}
+.btn-success  {background:#059669;color:white;border-color:#059669}
+.btn-hold     {background:#B45309;color:white;border-color:#B45309}
+.btn-danger   {background:transparent;color:#DC2626;border-color:#FECACA}
+.btn-resume   {background:#059669;color:white;border-color:#059669}
+.result-actions{display:flex;gap:8px;padding:10px 0 4px}
+
+/* ── Right panel ───────────────────────────────────────────────────────────── */
+.right-panel{overflow-y:auto;background:var(--surface);display:flex;flex-direction:column}
+.panel-section{border-bottom:1.5px solid var(--border);padding:11px 12px}
+.panel-section-title{font-family:var(--mono);font-size:9px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text-faint);margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;justify-content:space-between}
+.panel-section-title a{font-size:9px;color:var(--accent);cursor:pointer}
+.panel-footnote{font-family:var(--mono);font-size:9px;color:var(--text-faint)}
+.status-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.duration{font-family:var(--mono);font-size:10px;color:var(--text-muted)}
+.status-pill{font-family:var(--mono);font-size:9px;padding:2px 8px;
+  border-radius:10px;border:1px solid;font-weight:500}
+.cs-block{display:flex;flex-direction:column;gap:3px}
+.cs-row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;
+  border-bottom:1px dashed var(--border)}
+.cs-row:last-child{border-bottom:none}
+.cs-label{color:var(--text-faint);font-family:var(--mono);font-size:9px}
+.cs-val{color:var(--text);text-align:right;max-width:160px;font-size:11px}
+.cs-val.mono{font-family:var(--mono);font-size:10px}
+.issue-pending{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-muted)}
+.issue-card{border:1.5px solid var(--border);border-radius:var(--radius);padding:9px;background:var(--bg)}
+.issue-label{font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--text-faint);margin-bottom:4px}
+.issue-name{font-size:12px;font-weight:600;margin-bottom:2px}
+.issue-sub{font-size:10px;color:var(--text-muted);margin-bottom:6px}
+.issue-conf{display:flex;align-items:center;gap:6px}
+.conf-bar{height:4px;border-radius:2px;background:var(--border);flex:1;overflow:hidden}
+.conf-fill{height:100%;border-radius:2px;background:#059669}
+.conf-text{font-family:var(--mono);font-size:9px;color:var(--text-faint)}
+.tp-list{display:flex;flex-direction:column;gap:5px}
+.tp-item{font-size:11px;padding:5px 7px;background:var(--bg);border:1px solid var(--border);
+  border-radius:4px;display:flex;gap:6px;align-items:flex-start;line-height:1.4}
+.citation-list{display:flex;flex-direction:column;gap:6px}
+.citation-item{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);overflow:hidden}
+.citation-header{display:flex;align-items:center;gap:6px;padding:5px 8px;
+  font-size:11px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.citation-header strong{font-weight:600;flex:1}
+.citation-chunk{font-family:var(--mono);font-size:9px;color:var(--text-faint);
+  padding:5px 8px;line-height:1.6;border-left:3px solid var(--accent)}
+.score-tag{font-family:var(--mono);font-size:9px;padding:1px 5px;
+  background:var(--success-light);color:var(--success);border:1px solid #6EE7B7;border-radius:2px}
+.version-tag{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:2px;border:1px solid}
+.version-ok  {background:#DCFCE7;color:#15803D;border-color:#86EFAC}
+.version-warn{background:#FEF3C7;color:#B45309;border-color:#FCD34D}
+.audit-timeline{display:flex;flex-direction:column}
+.audit-item{display:flex;gap:8px;padding:5px 0;position:relative}
+.audit-item::before{content:'';position:absolute;left:7px;top:20px;
+  bottom:-5px;width:1px;background:var(--border)}
+.audit-item:last-child::before{display:none}
+.audit-dot{width:15px;height:15px;border-radius:50%;background:var(--surface);
+  border:2px solid var(--border-strong);flex-shrink:0;margin-top:2px;z-index:1;position:relative}
+.audit-dot.done   {background:var(--accent);border-color:var(--accent)}
+.audit-dot.ok     {background:#059669;border-color:#059669}
+.audit-dot.warn   {background:var(--warning);border-color:var(--warning)}
+.audit-content{flex:1}
+.audit-label{font-size:11px;font-weight:500;color:var(--text)}
+.audit-label.warn {color:var(--warning)}
+.audit-label.muted{color:var(--text-muted)}
+.audit-detail{font-size:10px;color:var(--text-muted)}
+.audit-time{font-family:var(--mono);font-size:9px;color:var(--text-faint)}
+
+/* ── Search suggestions ────────────────────────────────────────────────────── */
+.suggestions-block{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+.block-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text-faint);margin-bottom:4px}
+.search-sug{border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:8px 10px;background:var(--surface);cursor:pointer;transition:border-color .1s}
+.search-sug:hover{border-color:var(--accent)}
+.search-sug-source{font-family:var(--mono);font-size:9px;padding:1px 7px;border-radius:3px;
+  border:1px solid;display:inline-block;margin-bottom:4px;font-weight:500}
+.search-sug-query{font-size:11px;color:var(--text);margin-bottom:3px;
+  display:flex;align-items:center;gap:6px}
+.search-sug-rationale{font-size:10px;color:var(--text-muted);line-height:1.4}
+.sug-override{margin-top:4px}
+.sug-input{border:1.5px solid var(--border);border-radius:4px;padding:6px 10px;
+  font-size:12px;width:100%;font-family:var(--sans);background:var(--bg)}
+
+/* ── Search results ────────────────────────────────────────────────────────── */
+.search-results-block{display:flex;flex-direction:column;gap:8px;margin:6px 0}
+.sr-group{border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.sr-group-header{display:flex;align-items:center;gap:8px;padding:6px 10px;
+  font-size:11px;font-weight:600;border-bottom:1px solid var(--border)}
+.sr-count{font-family:var(--mono);font-size:9px;margin-left:auto;opacity:.7}
+.sr-item{padding:7px 10px;border-bottom:1px solid var(--border);background:var(--surface)}
+.sr-item:last-child{border-bottom:none}
+.sr-item-header{display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap}
+.sr-title{font-size:11px;font-weight:600;flex:1}
+.sr-snippet{font-size:11px;color:var(--text-muted);line-height:1.45}
+.relevance-bar{height:3px;border-radius:2px;background:var(--border);overflow:hidden;width:40px}
+.relevance-fill{height:100%;border-radius:2px;background:var(--success)}
+.relevance-text{font-family:var(--mono);font-size:9px;color:var(--text-faint)}
+
+/* ── Document viewer ───────────────────────────────────────────────────────── */
+.doc-viewer{border:1.5px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);overflow:hidden;margin:6px 0}
+.doc-viewer-header{background:var(--tag-bg);padding:8px 12px;border-bottom:1px solid var(--border);
+  font-size:11px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.doc-viewer-meta{font-family:var(--mono);font-size:9px;color:var(--text-faint);
+  padding:5px 12px;border-bottom:1px solid var(--border);background:var(--bg)}
+.doc-viewer-body{padding:12px;font-size:12px;line-height:1.7}
+.doc-viewer-actions{padding:8px 12px;border-top:1px solid var(--border);
+  display:flex;gap:8px;flex-wrap:wrap}
+.statute-block{margin:8px 0 8px 16px;font-family:var(--mono);font-size:11px;
+  border-left:3px solid var(--accent);padding-left:10px}
+mark{background:#FEF9C3;padding:1px 3px;border-radius:2px}
+
+/* ── Routing ───────────────────────────────────────────────────────────────── */
+.routing-block{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+.route-card{border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:10px 12px;display:flex;gap:10px;cursor:pointer;background:var(--surface)}
+.route-card.selected{border-color:var(--accent);background:var(--accent-light)}
+.route-radio{width:14px;height:14px;border:2px solid var(--border-strong);
+  border-radius:50%;flex-shrink:0;margin-top:3px;position:relative}
+.route-card.selected .route-radio{border-color:var(--accent)}
+.route-card.selected .route-radio::after{content:'';width:6px;height:6px;background:var(--accent);
+  border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+.route-body{flex:1}
+.route-dept{font-size:12px;font-weight:600;margin-bottom:3px}
+.route-rationale{font-size:11px;color:var(--text-muted);line-height:1.4;margin-bottom:4px}
+.route-conf{font-family:var(--mono);font-size:9px;font-weight:600}
+.routing-confirm{display:flex;gap:8px;margin-top:8px}
+
+/* ── SSO / full-screen ─────────────────────────────────────────────────────── */
+.sso-wrap{display:flex;justify-content:center;align-items:center;
+  min-height:100%;gap:32px;padding:40px 24px;background:var(--bg)}
+.sso-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;
+  padding:32px;width:100%;max-width:400px;box-shadow:var(--shadow-md)}
+.sso-logo{display:flex;align-items:center;gap:8px;font-family:var(--mono);
+  font-size:12px;font-weight:600;letter-spacing:.08em;margin-bottom:20px}
+.sso-footer{border-top:1px solid var(--border);margin-top:16px;padding-top:10px;
+  font-family:var(--mono);font-size:9px;color:var(--text-faint);text-align:center}
+.incoming-ring{width:72px;height:72px;border-radius:50%;background:#FEE2E2;
+  border:3px solid #DC2626;display:flex;align-items:center;justify-content:center;
+  font-size:28px;margin:0 auto;animation:pulse 1s infinite}
+.ref-badge{font-family:var(--mono);font-size:10px;color:var(--text-faint);
+  background:var(--tag-bg);border-radius:4px;padding:4px 10px;display:inline-block;margin-bottom:20px}
+.ann-box{background:var(--text);color:var(--bg);border-radius:6px;padding:12px 14px;max-width:260px}
+.ann-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;opacity:.5;
+  margin-bottom:6px;text-transform:uppercase}
+.ann-text{font-size:11px;line-height:1.6}
+.sso-annotation{display:flex;flex-direction:column;gap:10px}
+
+/* ── Spinner ───────────────────────────────────────────────────────────────── */
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="step-panel sso-panel" data-step="1">
+<div class="sso-wrap">
+  <div class="sso-card" style="max-width:420px;text-align:center">
+    <div class="sso-logo" style="justify-content:center">
+      <div class="logo-dot" style="background:#DC2626"></div>
+      <span>NSA·ASSIST — Call Centre</span>
+    </div>
+    <div style="margin:20px 0 10px"><div class="incoming-ring">📞</div></div>
+    <div style="font-size:20px;font-weight:600;margin-bottom:6px">Incoming Call</div>
+    <div style="font-family:var(--mono);font-size:16px;color:var(--accent);font-weight:600;margin-bottom:4px">+65 9XXX XXXX</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">No prior caller context — cold call</div>
+    <div class="ref-badge">Auto-assigned ref: CC-2026-07841</div>
+    <div style="display:flex;gap:10px;justify-content:center;margin:20px 0 16px">
+      <button class="btn btn-success" style="font-size:13px;padding:10px 24px" onclick="goTo(2)">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Accept Call
+      </button>
+      <button class="btn btn-secondary" style="font-size:13px;padding:10px 18px;color:#DC2626;border-color:#FECACA">✕ Decline</button>
+    </div>
+    <div class="sso-footer">STT activates on accept · AI monitoring enabled · 1800-NSA-1234</div>
+  </div>
+  <div class="sso-annotation">
+    <div class="ann-box">
+      <div class="ann-label">COLD CALL — NO CONTEXT</div>
+      <div class="ann-text">Officer receives no prior information.<br>AI builds context in real time from the live transcript.</div>
+    </div>
+    <div class="ann-box" style="margin-top:10px">
+      <div class="ann-label">ON ACCEPT</div>
+      <div class="ann-text">· STT engine activates<br>· Speaker diarisation starts<br>· AI begins issue detection<br>· Call ref logged to audit</div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+
+<div class="step-panel" data-step="2">
+<div class="shell">
+  <div class="topbar">
+    <div class="topbar-brand"><div class="logo-dot"></div>NSA·ASSIST</div>
+    <div class="topbar-center">
+      <span class="topbar-title">Active Call</span>
+      <span class="topbar-pill live-pill">📞 +65 9XXX XXXX</span>
+      <span class="topbar-pill">Ref: CC-2026-07841</span>
+    </div>
+    <div class="topbar-right">
+      <span>Rachel Ng</span>
+      <div class="avatar">RN</div>
+    </div>
+  </div>
+  <div class="leftnav">
+    <div class="nav-section-label">Call Centre</div>
+    <div class="nav-item active"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Active Call <span class="nav-badge">1</span></div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Call Queue <span class="nav-badge">7</span></div>
+    <div class="nav-item">🗂 My Cases <span class="nav-badge">12</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Knowledge Sources</div>
+<div class="nav-item">📋 Policy Repository</div><div class="nav-item">💡 Knowledge Base</div><div class="nav-item">📝 Forms & Templates</div><div class="nav-item">🗂 Case History</div><div class="nav-item">👥 Org Directory</div><div class="nav-item">⚖️ Regulatory Library</div>    <div class="nav-divider"></div>
+    <div class="nav-section-label">Tools</div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> AI Assistant</div>
+    <div class="nav-item">📜 Audit Trail</div>
+    <div style="flex:1"></div>
+    <div class="wf-note">NSA·ASSIST v2.0<br>Public Compliance & Enforcement</div>
+  </div>
+  <div class="chat-area">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">Inbound Call — 1800-NSA-1234</div>
+        <div class="chat-header-sub">Public Compliance & Enforcement · National Services Agency</div>
+      </div>
+      <div class="context-pills">
+        <span class="ctx-pill stt">🎙 STT Active</span>
+        <span class="ctx-pill ai">🤖 AI Listening</span>
+        <span class="ctx-pill ref">📞 CC-2026-07841</span>
+      </div>
+    </div>
+    <div id="transcript-2" class="chat-messages"></div>
+    <div class="chat-input-area">
+  <div class="input-context-bar">
+    <span class="active-label">ACTIVE:</span>
+    <div class="input-ctx-item"><div class="dot live-dot"></div>Live Call</div>
+    <div class="input-ctx-item"><div class="dot stt-dot"></div>STT On</div>
+    <div class="input-ctx-item"><div class="dot src-dot"></div>6 Sources</div>
+    <div class="input-ctx-item"><div class="dot ref-dot"></div>Ref CC-2026-07841</div>
+  </div>
+  <div class="action-bar">
+    <button class="btn btn-hold"
+onclick="goTo(3)">
+<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Place on Hold
+    </button>
+    <button class="btn btn-danger"
+>
+End Call
+    </button>
+  </div>
+  <div class="input-row">
+    <textarea class="input-box" placeholder="Type a note…"></textarea>
+    <button class="btn btn-icon"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg></button>
+  </div>
+</div>
+
+  </div>
+  <div class="right-panel">
+<div class="panel-section">
+  <div class="panel-section-title">Call Status <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+  <div class="status-row">
+    <span class="status-pill" style="background:#FEE2E2;color:#991B1B;border-color:#FECACA">🔴 LIVE</span>
+    <span class="duration">live</span>
+  </div>
+  <div class="cs-block">
+    <div class="cs-row"><span class="cs-label">REF</span><span class="cs-val mono">CC-2026-07841</span></div>
+    <div class="cs-row"><span class="cs-label">CHANNEL</span><span class="cs-val">Inbound · 1800-NSA-1234</span></div>
+    <div class="cs-row"><span class="cs-label">OFFICER</span><span class="cs-val">Rachel Ng · CE_OFFICER</span></div>
+  </div>
+</div>
+
+<div class="panel-section" id="issue-panel">
+  <div class="panel-section-title">Issue Detection <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+  <div class="issue-pending"><span class="spinner"></span> Analysing transcript…</div>
+</div>
+
+<div class="panel-section" id="talking-points" style="display:none">
+  <div class="panel-section-title">Talking Points <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg></div>
+  <div class="tp-list">
+  </div>
+</div>
+
+<div class="panel-section">
+  <div class="panel-section-title">Audit Trail <a>view full log</a></div>
+  <div class="audit-timeline" id="audit-trail">
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Call accepted · STT active</div>
+        <div class="audit-detail">CC-2026-07841</div>
+        <div class="audit-time">14:22:05</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Speaker diarisation on</div>
+        <div class="audit-detail">CALLER / OFFICER</div>
+        <div class="audit-time">14:22:05</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot pending"></div>
+      <div class="audit-content">
+        <div class="audit-label muted">⏳ Issue detection…</div>
+        <div class="audit-detail">Analysing transcript</div>
+        <div class="audit-time">Pending</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+
+<div class="step-panel" data-step="3">
+<div class="shell">
+  <div class="topbar">
+    <div class="topbar-brand"><div class="logo-dot"></div>NSA·ASSIST</div>
+    <div class="topbar-center">
+      <span class="topbar-title">Active Call</span>
+      <span class="topbar-pill live-pill">📞 +65 9XXX XXXX</span>
+      <span class="topbar-pill">Ref: CC-2026-07841</span>
+<span class="topbar-pill caller-pill">👤 Mr Lim Boon Kiat</span>    </div>
+    <div class="topbar-right">
+      <span>Rachel Ng</span>
+      <div class="avatar">RN</div>
+    </div>
+  </div>
+  <div class="leftnav">
+    <div class="nav-section-label">Call Centre</div>
+    <div class="nav-item active"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Active Call <span class="nav-badge">1</span></div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Call Queue <span class="nav-badge">7</span></div>
+    <div class="nav-item">🗂 My Cases <span class="nav-badge">12</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Knowledge Sources</div>
+<div class="nav-item">📋 Policy Repository</div><div class="nav-item">💡 Knowledge Base</div><div class="nav-item">📝 Forms & Templates</div><div class="nav-item">🗂 Case History</div><div class="nav-item">👥 Org Directory</div><div class="nav-item">⚖️ Regulatory Library</div>    <div class="nav-divider"></div>
+    <div class="nav-section-label">Tools</div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> AI Assistant</div>
+    <div class="nav-item">📜 Audit Trail</div>
+    <div style="flex:1"></div>
+    <div class="wf-note">NSA·ASSIST v2.0<br>Public Compliance & Enforcement</div>
+  </div>
+  <div class="chat-area">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">Inbound Call — 1800-NSA-1234</div>
+        <div class="chat-header-sub">Public Compliance & Enforcement · National Services Agency</div>
+      </div>
+      <div class="context-pills">
+        <span class="ctx-pill stt">🎙 STT Active</span>
+        <span class="ctx-pill ai">🤖 AI Listening</span>
+        <span class="ctx-pill ref">📞 CC-2026-07841</span>
+      </div>
+    </div>
+<div class="hold-bar">
+  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Caller is on hold · Hold music playing
+  <button class="btn btn-resume" onclick="goTo(7)" style="margin-left:auto">▶ Resume Call</button>
+</div>
+    <div class="chat-messages"><div class="tl-divider"><span>Caller placed on hold · 14:24:25</span></div>
+<div class="ai-banner warn-banner">
+  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> <strong>AI auto-suggested 6 searches</strong> across 6 knowledge systems based on transcript — click any card to execute
+</div>
+<div class="suggestions-block">
+  <div class="block-label">Suggested searches — click to execute</div>
+<div class="search-sug" onclick="goTo(4)">
+  <div class="search-sug-source" style="background:#DCFCE7;color:#15803D;border-color:#15803D33">
+    📋 Policy Repository
+  </div>
+  <div class="search-sug-query"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> <em>construction noise permitted hours regulations</em></div>
+  <div class="search-sug-rationale">AI detected after-hours construction — fetch permitted work hour rules</div>
+</div>
+<div class="search-sug" onclick="goTo(4)">
+  <div class="search-sug-source" style="background:#DBEAFE;color:#1D4ED8;border-color:#1D4ED833">
+    💡 Knowledge Base
+  </div>
+  <div class="search-sug-query"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> <em>noise complaint enforcement procedure</em></div>
+  <div class="search-sug-rationale">Standard KB article: complaint handling workflow for noise violations</div>
+</div>
+<div class="search-sug" onclick="goTo(4)">
+  <div class="search-sug-source" style="background:#EDE9FE;color:#7C3AED;border-color:#7C3AED33">
+    📝 Forms & Templates
+  </div>
+  <div class="search-sug-query"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> <em>construction noise complaint referral form</em></div>
+  <div class="search-sug-rationale">Locate enforcement referral form EN-07</div>
+</div>
+<div class="search-sug" onclick="goTo(4)">
+  <div class="search-sug-source" style="background:#FEF3C7;color:#B45309;border-color:#B4530933">
+    🗂 Case History
+  </div>
+  <div class="search-sug-query"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> <em>Buona Vista Road construction prior complaints</em></div>
+  <div class="search-sug-rationale">Check if this site has prior noise complaints on record</div>
+</div>
+<div class="search-sug" onclick="goTo(4)">
+  <div class="search-sug-source" style="background:#CCFBF1;color:#0F766E;border-color:#0F766E33">
+    👥 Org Directory
+  </div>
+  <div class="search-sug-query"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> <em>noise enforcement department routing directory</em></div>
+  <div class="search-sug-rationale">Identify correct enforcement team for construction noise</div>
+</div>
+<div class="search-sug" onclick="goTo(4)">
+  <div class="search-sug-source" style="background:#FCE7F3;color:#9D174D;border-color:#9D174D33">
+    ⚖️ Regulatory Library
+  </div>
+  <div class="search-sug-query"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> <em>Environmental Protection Management Act noise</em></div>
+  <div class="search-sug-rationale">Verify regulatory basis for after-hours construction violations</div>
+</div>
+  <div class="sug-override"><input class="sug-input" placeholder="Override: type your own search query…"></div>
+</div>
+</div>
+  </div>
+  <div class="right-panel">
+<div class="panel-section">
+  <div class="panel-section-title">Call Status <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+  <div class="status-row">
+    <span class="status-pill" style="background:#FEF9C3;color:#92400E;border-color:#FCD34D">⏸ ON HOLD</span>
+    <span class="duration">04:25</span>
+  </div>
+  <div class="cs-block">
+    <div class="cs-row"><span class="cs-label">REF</span><span class="cs-val mono">CC-2026-07841</span></div>
+    <div class="cs-row"><span class="cs-label">CALLER</span><span class="cs-val">Mr Lim Boon Kiat · IC ending 8821</span></div>
+    <div class="cs-row"><span class="cs-label">CHANNEL</span><span class="cs-val">Inbound · 1800-NSA-1234</span></div>
+    <div class="cs-row"><span class="cs-label">OFFICER</span><span class="cs-val">Rachel Ng · CE_OFFICER</span></div>
+  </div>
+</div>
+
+<div class="panel-section" id="issue-panel">
+  <div class="panel-section-title">Issue Detection <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+  <div class="issue-card">
+    <div class="issue-label">Detected Issue</div>
+    <div class="issue-name">Construction Noise Complaint</div>
+    <div class="issue-sub">After-hours works · Buona Vista Rd · Enforcement likely</div>
+    <div class="issue-conf">
+      <div class="conf-bar"><div class="conf-fill" style="width:94%"></div></div>
+      <span class="conf-text">94% confidence</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel-section">
+  <div class="panel-section-title">Audit Trail <a>view full log</a></div>
+  <div class="audit-timeline" id="audit-trail">
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Caller identified</div>
+        <div class="audit-detail">Mr Lim Boon Kiat · IC ending 8821</div>
+        <div class="audit-time">14:23:35</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Caller on hold</div>
+        <div class="audit-detail">14:24:25</div>
+        <div class="audit-time">14:24:25</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">AI suggestions ready</div>
+        <div class="audit-detail">6 queries · 6 systems</div>
+        <div class="audit-time">14:24:26</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot pending"></div>
+      <div class="audit-content">
+        <div class="audit-label muted">⏳ Searches pending</div>
+        <div class="audit-detail">Awaiting officer action</div>
+        <div class="audit-time">Pending</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+
+<div class="step-panel" data-step="4">
+<div class="shell">
+  <div class="topbar">
+    <div class="topbar-brand"><div class="logo-dot"></div>NSA·ASSIST</div>
+    <div class="topbar-center">
+      <span class="topbar-title">Active Call</span>
+      <span class="topbar-pill live-pill">📞 +65 9XXX XXXX</span>
+      <span class="topbar-pill">Ref: CC-2026-07841</span>
+<span class="topbar-pill caller-pill">👤 Mr Lim Boon Kiat</span>    </div>
+    <div class="topbar-right">
+      <span>Rachel Ng</span>
+      <div class="avatar">RN</div>
+    </div>
+  </div>
+  <div class="leftnav">
+    <div class="nav-section-label">Call Centre</div>
+    <div class="nav-item active"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Active Call <span class="nav-badge">1</span></div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Call Queue <span class="nav-badge">7</span></div>
+    <div class="nav-item">🗂 My Cases <span class="nav-badge">12</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Knowledge Sources</div>
+<div class="nav-item">📋 Policy Repository</div><div class="nav-item">💡 Knowledge Base</div><div class="nav-item">📝 Forms & Templates</div><div class="nav-item">🗂 Case History</div><div class="nav-item">👥 Org Directory</div><div class="nav-item">⚖️ Regulatory Library</div>    <div class="nav-divider"></div>
+    <div class="nav-section-label">Tools</div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> AI Assistant</div>
+    <div class="nav-item">📜 Audit Trail</div>
+    <div style="flex:1"></div>
+    <div class="wf-note">NSA·ASSIST v2.0<br>Public Compliance & Enforcement</div>
+  </div>
+  <div class="chat-area">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">Inbound Call — 1800-NSA-1234</div>
+        <div class="chat-header-sub">Public Compliance & Enforcement · National Services Agency</div>
+      </div>
+      <div class="context-pills">
+        <span class="ctx-pill stt">🎙 STT Active</span>
+        <span class="ctx-pill ai">🤖 AI Listening</span>
+        <span class="ctx-pill ref">📞 CC-2026-07841</span>
+      </div>
+    </div>
+<div class="hold-bar">
+  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Caller is on hold · Hold music playing
+  <button class="btn btn-resume" onclick="goTo(7)" style="margin-left:auto">▶ Resume Call</button>
+</div>
+    <div class="chat-messages"><div class="tl-divider"><span>6 searches executed · 14:24:28 · 9 results retrieved</span></div>
+<div class="ai-banner ok-banner"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> <strong>6 searches complete</strong> · 9 results · all versions current</div>
+<div class="search-results-block">
+  <div class="block-label">Results — click a document to open inline</div>
+<div class="sr-group">
+  <div class="sr-group-header" style="background:#DCFCE7;color:#15803D">
+    📋 Policy Repository
+    <span class="sr-count">2 results</span>
+  </div>
+  <div class="sr-item">
+    <div class="sr-item-header">
+      <span class="sr-title">Environmental Management (Construction Noise) Order 2022</span>
+      <span class="version-tag version-ok">
+        ✓ 2022 Rev Ed
+      </span>
+      <div class="relevance-bar"><div class="relevance-fill" style="width:96%"></div></div>
+      <span class="relevance-text">96%</span>
+    </div>
+    <div class="sr-snippet">Permitted hours: Mon–Fri 0730–1800, Sat 0730–1400. Works beyond these hours require a valid Night Work Permit (NWP) issued by NSA.</div>
+  </div>
+  <div class="sr-item">
+    <div class="sr-item-header">
+      <span class="sr-title">NSA Advisory — Residential Area Buffer Zones</span>
+      <span class="version-tag version-ok">
+        ✓ 2023-AN-07
+      </span>
+      <div class="relevance-bar"><div class="relevance-fill" style="width:78%"></div></div>
+      <span class="relevance-text">78%</span>
+    </div>
+    <div class="sr-snippet">Sites within 200m of residential premises subject to enhanced noise limits. Monitoring equipment required on-site.</div>
+  </div>
+</div>
+<div class="sr-group">
+  <div class="sr-group-header" style="background:#DBEAFE;color:#1D4ED8">
+    💡 Knowledge Base
+    <span class="sr-count">1 result</span>
+  </div>
+  <div class="sr-item">
+    <div class="sr-item-header">
+      <span class="sr-title">Construction Noise Complaint — Handling Procedure (KB-NCO-04)</span>
+      <span class="version-tag version-ok">
+        ✓ v3.1 · Oct 2024
+      </span>
+      <div class="relevance-bar"><div class="relevance-fill" style="width:91%"></div></div>
+      <span class="relevance-text">91%</span>
+    </div>
+    <div class="sr-snippet">Step 1: Log complaint. Step 2: Check NWP. Step 3: If no NWP, escalate to Enforcement. Step 4: Advise 2–3 day inspection timeline.</div>
+  </div>
+</div>
+<div class="sr-group">
+  <div class="sr-group-header" style="background:#EDE9FE;color:#7C3AED">
+    📝 Forms & Templates
+    <span class="sr-count">1 result</span>
+  </div>
+  <div class="sr-item">
+    <div class="sr-item-header">
+      <span class="sr-title">NSA Form EN-07 — Construction Noise Enforcement Referral</span>
+      <span class="version-tag version-ok">
+        ✓ Rev 4 · 2024
+      </span>
+      <div class="relevance-bar"><div class="relevance-fill" style="width:88%"></div></div>
+      <span class="relevance-text">88%</span>
+    </div>
+    <div class="sr-snippet">Standard referral form for escalating to Enforcement Team. Requires site address, alleged hours of works, and complainant details.</div>
+  </div>
+</div>
+<div class="sr-group">
+  <div class="sr-group-header" style="background:#FEF3C7;color:#B45309">
+    🗂 Case History
+    <span class="sr-count">1 result</span>
+  </div>
+  <div class="sr-item">
+    <div class="sr-item-header">
+      <span class="sr-title">Prior complaint — Buona Vista Rd Lot 22-A (CC-2025-06112)</span>
+      <span class="version-tag version-ok">
+        ✓ Jan 2025
+      </span>
+      <div class="relevance-bar"><div class="relevance-fill" style="width:83%"></div></div>
+      <span class="relevance-text">83%</span>
+    </div>
+    <div class="sr-snippet">Complaint lodged 12 Jan 2025. Inspected 15 Jan — no violation found at inspection. Contractor: Greenfield Construction Pte Ltd.</div>
+  </div>
+</div>
+<div class="sr-group">
+  <div class="sr-group-header" style="background:#CCFBF1;color:#0F766E">
+    👥 Org Directory
+    <span class="sr-count">1 result</span>
+  </div>
+  <div class="sr-item">
+    <div class="sr-item-header">
+      <span class="sr-title">Enforcement Team — Construction & Demolition (Buona Vista cluster)</span>
+      <span class="version-tag version-ok">
+        ✓ Current
+      </span>
+      <div class="relevance-bar"><div class="relevance-fill" style="width:90%"></div></div>
+      <span class="relevance-text">90%</span>
+    </div>
+    <div class="sr-snippet">Team Lead: Mr Daniel Chua (Ext 4421). Handles BV, HV, QT clusters. Referrals via Form EN-07 or direct call.</div>
+  </div>
+</div>
+<div class="sr-group">
+  <div class="sr-group-header" style="background:#FCE7F3;color:#9D174D">
+    ⚖️ Regulatory Library
+    <span class="sr-count">1 result</span>
+  </div>
+  <div class="sr-item">
+    <div class="sr-item-header">
+      <span class="sr-title">Environmental Protection and Management Act (Cap 94A) — §26</span>
+      <span class="version-tag version-ok">
+        ✓ Cap 94A · 2023 Rev
+      </span>
+      <div class="relevance-bar"><div class="relevance-fill" style="width:85%"></div></div>
+      <span class="relevance-text">85%</span>
+    </div>
+    <div class="sr-snippet">Any person who carries out construction works causing unreasonable noise is liable on conviction to a fine not exceeding $100,000.</div>
+  </div>
+</div>
+</div>
+<div class="result-actions">
+  <button class="btn btn-primary" onclick="goTo(5)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Open: Construction Noise Order 2022</button>
+  <button class="btn btn-secondary" onclick="goTo(6)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg> Skip to Routing →</button>
+</div>
+</div>
+  </div>
+  <div class="right-panel">
+<div class="panel-section">
+  <div class="panel-section-title">Call Status <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+  <div class="status-row">
+    <span class="status-pill" style="background:#FEF9C3;color:#92400E;border-color:#FCD34D">⏸ ON HOLD</span>
+    <span class="duration">05:40</span>
+  </div>
+  <div class="cs-block">
+    <div class="cs-row"><span class="cs-label">REF</span><span class="cs-val mono">CC-2026-07841</span></div>
+    <div class="cs-row"><span class="cs-label">CALLER</span><span class="cs-val">Mr Lim Boon Kiat · IC ending 8821</span></div>
+    <div class="cs-row"><span class="cs-label">CHANNEL</span><span class="cs-val">Inbound · 1800-NSA-1234</span></div>
+    <div class="cs-row"><span class="cs-label">OFFICER</span><span class="cs-val">Rachel Ng · CE_OFFICER</span></div>
+  </div>
+</div>
+
+<div class="panel-section">
+  <div class="panel-section-title">Retrieved Documents</div>
+  <div class="citation-list">
+    <div class="citation-item">
+      <div class="citation-header">
+        <span>📋</span>
+        <strong>Noise Order 2022</strong>
+        <span class="score-tag">0.96</span>
+        <span class="version-tag version-ok">
+          ✓ 2022 Rev Ed
+        </span>
+      </div>
+      <div class="citation-chunk">Permitted hours Mon–Fri 0730–1800. NWP required for after-hours works.</div>
+    </div>
+    <div class="citation-item">
+      <div class="citation-header">
+        <span>📋</span>
+        <strong>KB-NCO-04</strong>
+        <span class="score-tag">0.91</span>
+        <span class="version-tag version-ok">
+          ✓ v3.1 · Oct 2024
+        </span>
+      </div>
+      <div class="citation-chunk">Check NWP. No NWP → Enforcement Team via EN-07.</div>
+    </div>
+    <div class="citation-item">
+      <div class="citation-header">
+        <span>📋</span>
+        <strong>EN-07 Form</strong>
+        <span class="score-tag">0.88</span>
+        <span class="version-tag version-ok">
+          ✓ Rev 4 · 2024
+        </span>
+      </div>
+      <div class="citation-chunk">Standard referral form for Enforcement Team escalation.</div>
+    </div>
+  </div>
+</div>
+
+<div class="panel-section">
+  <div class="panel-section-title">Audit Trail <a>view full log</a></div>
+  <div class="audit-timeline" id="audit-trail">
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">6 searches executed</div>
+        <div class="audit-detail">AI auto-suggested · confirmed</div>
+        <div class="audit-time">14:24:28</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">All 6 sources hit</div>
+        <div class="audit-detail">9 results total</div>
+        <div class="audit-time">14:24:30</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot pending"></div>
+      <div class="audit-content">
+        <div class="audit-label muted">⏳ Officer reviewing</div>
+        <div class="audit-detail">Routing pending</div>
+        <div class="audit-time">Pending</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+
+<div class="step-panel" data-step="5">
+<div class="shell">
+  <div class="topbar">
+    <div class="topbar-brand"><div class="logo-dot"></div>NSA·ASSIST</div>
+    <div class="topbar-center">
+      <span class="topbar-title">Active Call</span>
+      <span class="topbar-pill live-pill">📞 +65 9XXX XXXX</span>
+      <span class="topbar-pill">Ref: CC-2026-07841</span>
+<span class="topbar-pill caller-pill">👤 Mr Lim Boon Kiat</span>    </div>
+    <div class="topbar-right">
+      <span>Rachel Ng</span>
+      <div class="avatar">RN</div>
+    </div>
+  </div>
+  <div class="leftnav">
+    <div class="nav-section-label">Call Centre</div>
+    <div class="nav-item active"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Active Call <span class="nav-badge">1</span></div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Call Queue <span class="nav-badge">7</span></div>
+    <div class="nav-item">🗂 My Cases <span class="nav-badge">12</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Knowledge Sources</div>
+<div class="nav-item">📋 Policy Repository</div><div class="nav-item">💡 Knowledge Base</div><div class="nav-item">📝 Forms & Templates</div><div class="nav-item">🗂 Case History</div><div class="nav-item">👥 Org Directory</div><div class="nav-item">⚖️ Regulatory Library</div>    <div class="nav-divider"></div>
+    <div class="nav-section-label">Tools</div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> AI Assistant</div>
+    <div class="nav-item">📜 Audit Trail</div>
+    <div style="flex:1"></div>
+    <div class="wf-note">NSA·ASSIST v2.0<br>Public Compliance & Enforcement</div>
+  </div>
+  <div class="chat-area">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">Inbound Call — 1800-NSA-1234</div>
+        <div class="chat-header-sub">Public Compliance & Enforcement · National Services Agency</div>
+      </div>
+      <div class="context-pills">
+        <span class="ctx-pill stt">🎙 STT Active</span>
+        <span class="ctx-pill ai">🤖 AI Listening</span>
+        <span class="ctx-pill ref">📞 CC-2026-07841</span>
+      </div>
+    </div>
+<div class="hold-bar">
+  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Caller is on hold · Hold music playing
+  <button class="btn btn-resume" onclick="goTo(7)" style="margin-left:auto">▶ Resume Call</button>
+</div>
+    <div class="chat-messages"><div class="tl-divider"><span>Officer opened document · 14:24:40</span></div>
+<div class="ai-banner ok-banner"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Document opened inline · version confirmed current</div>
+<div class="doc-viewer">
+  <div class="doc-viewer-header">
+    📋 Environmental Management (Construction Noise) Order 2022
+    <span class="version-tag version-ok" style="margin-left:auto">✓ 2022 Rev Ed · Current</span>
+    <button class="btn btn-ghost" onclick="goTo(4)">✕ Close</button>
+  </div>
+  <div class="doc-viewer-meta">Source: Policy Repository · chunk_id: POL-CNO-2022-003 · clearance: PUBLIC · Relevance: 96%</div>
+  <div class="doc-viewer-body">
+    <strong>Part II — Permitted Hours of Construction Work</strong><br><br>
+    <strong>§4. General Permitted Hours</strong><br>
+    Construction work may be carried out only during the following hours:<br>
+    <div class="statute-block">
+      (a) Monday to Friday: 0730 – 1800 hours;<br>
+      (b) Saturday: 0730 – 1400 hours;<br>
+      (c) Sunday and public holidays: No works permitted.
+    </div>
+    <strong>§5. Night Work Permits (NWP)</strong><br>
+    A contractor may apply to the Agency for a Night Work Permit to carry out works beyond the permitted hours in §4.
+    <mark>Works without a valid NWP beyond permitted hours constitute a violation under EPMA Cap 94A §26.</mark><br><br>
+    <strong>§8. Residential Buffer Zone</strong><br>
+    Sites within 200 metres of a residential building are subject to enhanced conditions. A noise monitoring device must be installed and readings submitted weekly to the Agency.
+  </div>
+  <div class="doc-viewer-actions">
+    <button class="btn btn-secondary">📎 Attach to Case</button>
+    <button class="btn btn-secondary">📋 Copy Citation</button>
+    <button class="btn btn-primary" onclick="goTo(6)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg> Proceed to Routing →</button>
+  </div>
+</div>
+</div>
+  </div>
+  <div class="right-panel">
+<div class="panel-section">
+  <div class="panel-section-title">Call Status <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+  <div class="status-row">
+    <span class="status-pill" style="background:#FEF9C3;color:#92400E;border-color:#FCD34D">⏸ ON HOLD</span>
+    <span class="duration">06:10</span>
+  </div>
+  <div class="cs-block">
+    <div class="cs-row"><span class="cs-label">REF</span><span class="cs-val mono">CC-2026-07841</span></div>
+    <div class="cs-row"><span class="cs-label">CALLER</span><span class="cs-val">Mr Lim Boon Kiat · IC ending 8821</span></div>
+    <div class="cs-row"><span class="cs-label">CHANNEL</span><span class="cs-val">Inbound · 1800-NSA-1234</span></div>
+    <div class="cs-row"><span class="cs-label">OFFICER</span><span class="cs-val">Rachel Ng · CE_OFFICER</span></div>
+  </div>
+</div>
+
+<div class="panel-section">
+  <div class="panel-section-title">Retrieved Documents</div>
+  <div class="citation-list">
+    <div class="citation-item">
+      <div class="citation-header">
+        <span>📋</span>
+        <strong>Noise Order 2022</strong>
+        <span class="score-tag">0.96</span>
+        <span class="version-tag version-ok">
+          ✓ 2022 Rev Ed
+        </span>
+      </div>
+      <div class="citation-chunk">§4: Permitted hours. §5: Works without NWP = violation.</div>
+    </div>
+    <div class="citation-item">
+      <div class="citation-header">
+        <span>📋</span>
+        <strong>KB-NCO-04</strong>
+        <span class="score-tag">0.91</span>
+        <span class="version-tag version-ok">
+          ✓ v3.1 · Oct 2024
+        </span>
+      </div>
+      <div class="citation-chunk">Check NWP. No NWP → Enforcement via EN-07.</div>
+    </div>
+  </div>
+</div>
+
+<div class="panel-section">
+  <div class="panel-section-title">Audit Trail <a>view full log</a></div>
+  <div class="audit-timeline" id="audit-trail">
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">6 searches executed</div>
+        <div class="audit-detail">9 results</div>
+        <div class="audit-time">14:24:28</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Document opened</div>
+        <div class="audit-detail">Noise Order 2022 · POL-CNO-2022-003</div>
+        <div class="audit-time">14:24:40</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Version confirmed</div>
+        <div class="audit-detail">2022 Rev Ed · Current</div>
+        <div class="audit-time">14:24:40</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot pending"></div>
+      <div class="audit-content">
+        <div class="audit-label muted">⏳ Routing pending</div>
+        <div class="audit-detail">Officer to select referral path</div>
+        <div class="audit-time">Pending</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+
+<div class="step-panel" data-step="6">
+<div class="shell">
+  <div class="topbar">
+    <div class="topbar-brand"><div class="logo-dot"></div>NSA·ASSIST</div>
+    <div class="topbar-center">
+      <span class="topbar-title">Active Call</span>
+      <span class="topbar-pill live-pill">📞 +65 9XXX XXXX</span>
+      <span class="topbar-pill">Ref: CC-2026-07841</span>
+<span class="topbar-pill caller-pill">👤 Mr Lim Boon Kiat</span>    </div>
+    <div class="topbar-right">
+      <span>Rachel Ng</span>
+      <div class="avatar">RN</div>
+    </div>
+  </div>
+  <div class="leftnav">
+    <div class="nav-section-label">Call Centre</div>
+    <div class="nav-item active"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Active Call <span class="nav-badge">1</span></div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Call Queue <span class="nav-badge">7</span></div>
+    <div class="nav-item">🗂 My Cases <span class="nav-badge">12</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Knowledge Sources</div>
+<div class="nav-item">📋 Policy Repository</div><div class="nav-item">💡 Knowledge Base</div><div class="nav-item">📝 Forms & Templates</div><div class="nav-item">🗂 Case History</div><div class="nav-item">👥 Org Directory</div><div class="nav-item">⚖️ Regulatory Library</div>    <div class="nav-divider"></div>
+    <div class="nav-section-label">Tools</div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> AI Assistant</div>
+    <div class="nav-item">📜 Audit Trail</div>
+    <div style="flex:1"></div>
+    <div class="wf-note">NSA·ASSIST v2.0<br>Public Compliance & Enforcement</div>
+  </div>
+  <div class="chat-area">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">Inbound Call — 1800-NSA-1234</div>
+        <div class="chat-header-sub">Public Compliance & Enforcement · National Services Agency</div>
+      </div>
+      <div class="context-pills">
+        <span class="ctx-pill stt">🎙 STT Active</span>
+        <span class="ctx-pill ai">🤖 AI Listening</span>
+        <span class="ctx-pill ref">📞 CC-2026-07841</span>
+      </div>
+    </div>
+<div class="hold-bar">
+  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Caller is on hold · Hold music playing
+  <button class="btn btn-resume" onclick="goTo(7)" style="margin-left:auto">▶ Resume Call</button>
+</div>
+    <div class="chat-messages"><div class="tl-divider"><span>Routing analysis · 14:25:10</span></div>
+<div class="ai-banner ok-banner"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Documents reviewed · NWP status: <strong>not confirmed</strong> · likely violation</div>
+<div class="ai-banner default-banner" style="margin-top:6px"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg> <strong>AI routing analysis complete</strong> — 3 options identified</div>
+<div class="routing-block">
+  <div class="block-label">Routing options — select one to confirm</div>
+<div class="route-card selected">
+  <div class="route-radio"></div>
+  <div class="route-body">
+    <div class="route-dept">Enforcement Team — Construction & Demolition (Buona Vista cluster)</div>
+    <div class="route-rationale">Primary route. Likely NWP violation. Enforcement Team has jurisdiction and prior case history for this site (CC-2025-06112). Referral via NSA Form EN-07.</div>
+    <div class="route-conf" style="color:#15803D">AI confidence: 92%</div>
+  </div>
+</div>
+<div class="route-card">
+  <div class="route-radio"></div>
+  <div class="route-body">
+    <div class="route-dept">Environmental Health Operations — Noise Monitoring Unit</div>
+    <div class="route-rationale">Alternative if NWP status is unclear. NMU can deploy monitoring equipment to confirm violation before enforcement action.</div>
+    <div class="route-conf" style="color:#B45309">AI confidence: 68%</div>
+  </div>
+</div>
+<div class="route-card">
+  <div class="route-radio"></div>
+  <div class="route-body">
+    <div class="route-dept">Building & Construction Authority — Site Compliance</div>
+    <div class="route-rationale">Use only if NSA has no jurisdiction (e.g. site under BCA permit). Lower confidence — NSA is likely primary agency.</div>
+    <div class="route-conf" style="color:#991B1B">AI confidence: 41%</div>
+  </div>
+</div>
+  <div class="routing-confirm">
+    <button class="btn btn-primary" onclick="goTo(7)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Confirm: Enforcement Team C&amp;D</button>
+    <button class="btn btn-secondary">Fill EN-07 Form</button>
+  </div>
+</div>
+</div>
+  </div>
+  <div class="right-panel">
+<div class="panel-section">
+  <div class="panel-section-title">Call Status <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+  <div class="status-row">
+    <span class="status-pill" style="background:#FEF9C3;color:#92400E;border-color:#FCD34D">⏸ ON HOLD</span>
+    <span class="duration">07:10</span>
+  </div>
+  <div class="cs-block">
+    <div class="cs-row"><span class="cs-label">REF</span><span class="cs-val mono">CC-2026-07841</span></div>
+    <div class="cs-row"><span class="cs-label">CALLER</span><span class="cs-val">Mr Lim Boon Kiat · IC ending 8821</span></div>
+    <div class="cs-row"><span class="cs-label">CHANNEL</span><span class="cs-val">Inbound · 1800-NSA-1234</span></div>
+    <div class="cs-row"><span class="cs-label">OFFICER</span><span class="cs-val">Rachel Ng · CE_OFFICER</span></div>
+  </div>
+</div>
+
+<div class="panel-section" id="issue-panel">
+  <div class="panel-section-title">Issue Detection <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+  <div class="issue-card">
+    <div class="issue-label">Detected Issue</div>
+    <div class="issue-name">Construction Noise — NWP Violation (likely)</div>
+    <div class="issue-sub">After-hours works · No NWP on record · Enforcement route</div>
+    <div class="issue-conf">
+      <div class="conf-bar"><div class="conf-fill" style="width:92%"></div></div>
+      <span class="conf-text">92% confidence</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel-section">
+  <div class="panel-section-title">Audit Trail <a>view full log</a></div>
+  <div class="audit-timeline" id="audit-trail">
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Documents reviewed</div>
+        <div class="audit-detail">Noise Order 2022 · KB-NCO-04</div>
+        <div class="audit-time">14:24:55</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Routing analysis complete</div>
+        <div class="audit-detail">3 options · AI scored</div>
+        <div class="audit-time">14:25:10</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot pending"></div>
+      <div class="audit-content">
+        <div class="audit-label muted">⏳ Officer confirming route</div>
+        <div class="audit-detail">Human-in-loop checkpoint</div>
+        <div class="audit-time">Pending</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+
+<div class="step-panel" data-step="7">
+<div class="shell">
+  <div class="topbar">
+    <div class="topbar-brand"><div class="logo-dot"></div>NSA·ASSIST</div>
+    <div class="topbar-center">
+      <span class="topbar-title">Active Call</span>
+      <span class="topbar-pill live-pill">📞 +65 9XXX XXXX</span>
+      <span class="topbar-pill">Ref: CC-2026-07841</span>
+<span class="topbar-pill caller-pill">👤 Mr Lim Boon Kiat</span>    </div>
+    <div class="topbar-right">
+      <span>Rachel Ng</span>
+      <div class="avatar">RN</div>
+    </div>
+  </div>
+  <div class="leftnav">
+    <div class="nav-section-label">Call Centre</div>
+    <div class="nav-item active"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Active Call <span class="nav-badge">1</span></div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Call Queue <span class="nav-badge">7</span></div>
+    <div class="nav-item">🗂 My Cases <span class="nav-badge">12</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Knowledge Sources</div>
+<div class="nav-item">📋 Policy Repository</div><div class="nav-item">💡 Knowledge Base</div><div class="nav-item">📝 Forms & Templates</div><div class="nav-item">🗂 Case History</div><div class="nav-item">👥 Org Directory</div><div class="nav-item">⚖️ Regulatory Library</div>    <div class="nav-divider"></div>
+    <div class="nav-section-label">Tools</div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> AI Assistant</div>
+    <div class="nav-item">📜 Audit Trail</div>
+    <div style="flex:1"></div>
+    <div class="wf-note">NSA·ASSIST v2.0<br>Public Compliance & Enforcement</div>
+  </div>
+  <div class="chat-area">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">Inbound Call — 1800-NSA-1234</div>
+        <div class="chat-header-sub">Public Compliance & Enforcement · National Services Agency</div>
+      </div>
+      <div class="context-pills">
+        <span class="ctx-pill stt">🎙 STT Active</span>
+        <span class="ctx-pill ai">🤖 AI Listening</span>
+        <span class="ctx-pill ref">📞 CC-2026-07841</span>
+      </div>
+    </div>
+    <div id="transcript-7" class="chat-messages"></div>
+    <div class="chat-input-area">
+  <div class="input-context-bar">
+    <span class="active-label">ACTIVE:</span>
+    <div class="input-ctx-item"><div class="dot live-dot"></div>Live Call</div>
+    <div class="input-ctx-item"><div class="dot stt-dot"></div>STT On</div>
+    <div class="input-ctx-item"><div class="dot src-dot"></div>6 Sources</div>
+    <div class="input-ctx-item"><div class="dot ref-dot"></div>Ref CC-2026-07841</div>
+  </div>
+  <div class="action-bar">
+    <button class="btn btn-danger"
+onclick="goTo(8)">
+End Call
+    </button>
+  </div>
+  <div class="input-row">
+    <textarea class="input-box" placeholder="Type a note…"></textarea>
+    <button class="btn btn-icon"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg></button>
+  </div>
+</div>
+
+  </div>
+  <div class="right-panel">
+<div class="panel-section">
+  <div class="panel-section-title">Call Status <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+  <div class="status-row">
+    <span class="status-pill" style="background:#FEE2E2;color:#991B1B;border-color:#FECACA">🔴 LIVE</span>
+    <span class="duration">live</span>
+  </div>
+  <div class="cs-block">
+    <div class="cs-row"><span class="cs-label">REF</span><span class="cs-val mono">CC-2026-07841</span></div>
+    <div class="cs-row"><span class="cs-label">CALLER</span><span class="cs-val">Mr Lim Boon Kiat · IC ending 8821</span></div>
+    <div class="cs-row"><span class="cs-label">CHANNEL</span><span class="cs-val">Inbound · 1800-NSA-1234</span></div>
+    <div class="cs-row"><span class="cs-label">OFFICER</span><span class="cs-val">Rachel Ng · CE_OFFICER</span></div>
+  </div>
+</div>
+
+<div class="panel-section" id="issue-panel">
+  <div class="panel-section-title">Issue Detection <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+  <div class="issue-card">
+    <div class="issue-label">Detected Issue</div>
+    <div class="issue-name">Construction Noise — NWP Violation (likely)</div>
+    <div class="issue-sub">Routed → Enforcement Team C&D · EN-07 to be filed</div>
+    <div class="issue-conf">
+      <div class="conf-bar"><div class="conf-fill" style="width:92%"></div></div>
+      <span class="conf-text">92% confidence</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel-section" id="talking-points">
+  <div class="panel-section-title">Talking Points <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg></div>
+  <div class="tp-list">
+    <div class="tp-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> ✓ Acknowledge complaint · confirm escalation to Enforcement Team</div>
+    <div class="tp-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> ✓ State inspection timeline: 2–3 working days</div>
+    <div class="tp-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> ✓ Advise: notice to cease if violation confirmed</div>
+    <div class="tp-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> ✓ Provide complaint ref: CC-2026-07841</div>
+    <div class="tp-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> ✓ Confirm no further issues before ending call</div>
+  </div>
+  <div class="panel-footnote">AI-generated · updating as transcript evolves</div>
+</div>
+
+<div class="panel-section">
+  <div class="panel-section-title">Audit Trail <a>view full log</a></div>
+  <div class="audit-timeline" id="audit-trail">
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Routing confirmed</div>
+        <div class="audit-detail">Enforcement Team C&D · human-in-loop</div>
+        <div class="audit-time">14:25:40</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Call resumed</div>
+        <div class="audit-detail">Officer resumed</div>
+        <div class="audit-time">14:25:45</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot pending"></div>
+      <div class="audit-content">
+        <div class="audit-label muted">⏳ Awaiting end</div>
+        <div class="audit-detail">Wrap-up pending</div>
+        <div class="audit-time">Pending</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+
+<div class="step-panel" data-step="8">
+<div class="shell">
+  <div class="topbar">
+    <div class="topbar-brand"><div class="logo-dot"></div>NSA·ASSIST</div>
+    <div class="topbar-center">
+      <span class="topbar-title">Active Call</span>
+      <span class="topbar-pill live-pill">📞 +65 9XXX XXXX</span>
+      <span class="topbar-pill">Ref: CC-2026-07841</span>
+    </div>
+    <div class="topbar-right">
+      <span>Rachel Ng</span>
+      <div class="avatar">RN</div>
+    </div>
+  </div>
+  <div class="leftnav">
+    <div class="nav-section-label">Call Centre</div>
+    <div class="nav-item active"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Active Call <span class="nav-badge">1</span></div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Call Queue <span class="nav-badge">7</span></div>
+    <div class="nav-item">🗂 My Cases <span class="nav-badge">12</span></div>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Knowledge Sources</div>
+<div class="nav-item">📋 Policy Repository</div><div class="nav-item">💡 Knowledge Base</div><div class="nav-item">📝 Forms & Templates</div><div class="nav-item">🗂 Case History</div><div class="nav-item">👥 Org Directory</div><div class="nav-item">⚖️ Regulatory Library</div>    <div class="nav-divider"></div>
+    <div class="nav-section-label">Tools</div>
+    <div class="nav-item"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> AI Assistant</div>
+    <div class="nav-item">📜 Audit Trail</div>
+    <div style="flex:1"></div>
+    <div class="wf-note">NSA·ASSIST v2.0<br>Public Compliance & Enforcement</div>
+  </div>
+  <div class="chat-area">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">Inbound Call — 1800-NSA-1234</div>
+        <div class="chat-header-sub">Public Compliance & Enforcement · National Services Agency</div>
+      </div>
+      <div class="context-pills">
+        <span class="ctx-pill stt">🎙 STT Active</span>
+        <span class="ctx-pill ai">🤖 AI Listening</span>
+        <span class="ctx-pill ref">📞 CC-2026-07841</span>
+      </div>
+    </div>
+    <div class="chat-messages"><div class="tl-divider"><span>Call ended · 14:27:02 · Duration: 05:02</span></div>
+<div class="ai-banner ok-banner"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> <strong>Call ended.</strong> AI summary generated — review and submit to close case.</div>
+<div class="doc-viewer" style="border-color:#059669">
+  <div class="doc-viewer-header" style="background:#D1FAE5;border-color:#6EE7B7">
+    ✓ AI-Generated Call Summary — CC-2026-07841
+    <span class="panel-footnote" style="margin-left:auto">14:27:05 · Review and submit</span>
+  </div>
+  <div class="doc-viewer-body" style="line-height:1.75">
+    <strong>Caller:</strong> Mr Lim Boon Kiat · IC ending 8821 · Blk 47 Buona Vista Rd, #08-12<br>
+    <strong>Issue:</strong> Construction noise — after-hours works · Construction site at Buona Vista Rd (Lot 22-A)<br>
+    <strong>Duration reported:</strong> ~9pm to midnight daily · ongoing ~3 weeks<br>
+    <strong>Detection confidence:</strong> 94% · NWP violation likely<br><br>
+    <strong>Documents Retrieved:</strong><br>
+    · Environmental Management (Construction Noise) Order 2022 §4, §5<br>
+    · KB-NCO-04 Handling Procedure v3.1<br>
+    · NSA Form EN-07 (to be filed)<br>
+    · Prior complaint CC-2025-06112 (Jan 2025 · no violation at inspection)<br><br>
+    <strong>Action Taken:</strong><br>
+    · Complaint logged · ref CC-2026-07841<br>
+    · Routed to: Enforcement Team — Construction &amp; Demolition (Buona Vista cluster)<br>
+    · Attn: Mr Daniel Chua · Ext 4421 · via NSA Form EN-07<br>
+    · Caller informed: inspection within 2–3 working days<br><br>
+    <strong>Follow-up Required:</strong><br>
+    · File NSA Form EN-07 → Enforcement Team<br>
+    · Update caller when inspection scheduled
+  </div>
+  <div class="doc-viewer-actions">
+    <button class="btn btn-success" onclick="goTo(9)"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg> Confirm &amp; Submit</button>
+    <button class="btn btn-secondary">✏ Edit Summary</button>
+    <button class="btn btn-ghost">📎 Attach EN-07</button>
+  </div>
+</div>
+</div>
+  </div>
+  <div class="right-panel">
+<div class="panel-section">
+  <div class="panel-section-title">Call Status <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .84h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+  <div class="status-row">
+    <span class="status-pill" style="background:#D1FAE5;color:#065F46;border-color:#6EE7B7">✓ ENDED</span>
+    <span class="duration">05:02 total</span>
+  </div>
+  <div class="cs-block">
+    <div class="cs-row"><span class="cs-label">REF</span><span class="cs-val mono">CC-2026-07841</span></div>
+    <div class="cs-row"><span class="cs-label">CALLER</span><span class="cs-val">Mr Lim Boon Kiat · IC ending 8821</span></div>
+    <div class="cs-row"><span class="cs-label">CHANNEL</span><span class="cs-val">Inbound · 1800-NSA-1234</span></div>
+    <div class="cs-row"><span class="cs-label">OFFICER</span><span class="cs-val">Rachel Ng · CE_OFFICER</span></div>
+  </div>
+</div>
+
+<div class="panel-section">
+  <div class="panel-section-title">Audit Trail <a>view full log</a></div>
+  <div class="audit-timeline" id="audit-trail">
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Call accepted · STT</div>
+        <div class="audit-detail">CC-2026-07841</div>
+        <div class="audit-time">14:22:05</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Caller identified</div>
+        <div class="audit-detail">Mr Lim Boon Kiat</div>
+        <div class="audit-time">14:23:35</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Issue detected</div>
+        <div class="audit-detail">Construction Noise · 94%</div>
+        <div class="audit-time">14:22:54</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">6 searches on hold</div>
+        <div class="audit-detail">9 results</div>
+        <div class="audit-time">14:24:28</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Routing confirmed</div>
+        <div class="audit-detail">Enforcement Team C&D</div>
+        <div class="audit-time">14:25:40</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot done"></div>
+      <div class="audit-content">
+        <div class="audit-label">Outcome communicated</div>
+        <div class="audit-detail">Ref + timeline given</div>
+        <div class="audit-time">14:26:30</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot ok"></div>
+      <div class="audit-content">
+        <div class="audit-label">✓ Call ended</div>
+        <div class="audit-detail">Duration: 05:02</div>
+        <div class="audit-time">14:27:02</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot ok"></div>
+      <div class="audit-content">
+        <div class="audit-label">✓ Summary generated</div>
+        <div class="audit-detail">Pending officer confirmation</div>
+        <div class="audit-time">14:27:05</div>
+      </div>
+    </div>
+    <div class="audit-item">
+      <div class="audit-dot pending"></div>
+      <div class="audit-content">
+        <div class="audit-label muted">⏳ Submit to close</div>
+        <div class="audit-detail">Officer confirmation required</div>
+        <div class="audit-time">Pending</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</div>
+</div>
+
+
+<div class="step-panel sso-panel" data-step="9">
+<div style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--bg)">
+  <div style="text-align:center;max-width:400px;padding:40px">
+    <div style="font-size:56px;margin-bottom:16px">✅</div>
+    <div style="font-size:20px;font-weight:600;color:#065F46;margin-bottom:10px">Case Closed</div>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:24px">
+      Complaint <strong>CC-2026-07841</strong> has been logged and routed to the Enforcement Team — Construction &amp; Demolition.<br><br>
+      NSA Form EN-07 queued for filing. Caller will be updated when the site inspection is scheduled.
+    </div>
+    <button class="btn btn-primary" style="font-size:13px;padding:9px 22px" onclick="goTo(1)">← Back to Call Queue</button>
+  </div>
+</div>
+</div>
+
+
+<script>
+// ── Injected data ─────────────────────────────────────────────────────────────
+const STEP_REGISTRY = {"1": {"animated": false}, "2": {"animated": true, "transcriptKey": "live", "midStreamEvents": [{"after_line": 6, "action": "show_issue", "confidence": 89, "issue": "Construction Noise Complaint", "sub": "Potential enforcement · NEA Noise Regulations"}, {"after_line": 6, "action": "show_talking_points"}, {"after_line": 9, "action": "update_caller_tag"}, {"after_line": 9, "action": "update_audit", "entry": {"dot": "done", "label": "Caller identified", "detail": "Mr Lim Boon Kiat · IC ending 8821", "ts": "14:23:35"}}]}, "3": {"animated": false}, "4": {"animated": false}, "5": {"animated": false}, "6": {"animated": false}, "7": {"animated": true, "transcriptKey": "resumed", "midStreamEvents": []}, "8": {"animated": false}, "9": {"animated": false}};
+const TRANSCRIPT_DATA = {"live": [{"type": "divider", "text": "Call started · 14:22:05 · STT active · AI listening"}, {"type": "line", "speaker": "caller", "text": "Hello, yes — <span class=\"tl-foreign\">我想投诉</span><span class=\"tl-translation\"> [I want to complain]</span> about the noise problem near my house.", "ts": "14:22:08"}, {"type": "line", "speaker": "officer", "text": "Good afternoon, thank you for calling the National Services Agency. May I know what kind of noise issue you are experiencing?", "ts": "14:22:14"}, {"type": "line", "speaker": "caller", "text": "<span class=\"tl-foreign\">那个construction site</span><span class=\"tl-translation\"> [that construction site]</span> nearby, they <span class=\"tl-foreign\">做到很晚</span><span class=\"tl-translation\"> [work until very late]</span> — sometimes until 11pm, even midnight. <span class=\"tl-foreign\">我整个人都睡不着</span><span class=\"tl-translation\"> [I completely cannot sleep]</span>.", "ts": "14:22:28"}, {"type": "line", "speaker": "officer", "text": "I understand, that does sound very disruptive. Could you tell me roughly where the construction site is located?", "ts": "14:22:38"}, {"type": "line", "speaker": "caller", "text": "<span class=\"tl-foreign\">就在</span><span class=\"tl-translation\"> [just at]</span> Buona Vista Road lah. The big site there — <span class=\"tl-foreign\">盖组屋的那种</span><span class=\"tl-translation\"> [the kind building residential blocks]</span>.", "ts": "14:22:51"}, {"type": "divider", "text": "AI issue detection triggered · 14:22:54 · Construction Noise Complaint · 89% confidence"}, {"type": "line", "speaker": "caller", "text": "Every night <span class=\"tl-foreign\">都是这样</span><span class=\"tl-translation\"> [always like this]</span> — my whole family <span class=\"tl-foreign\">根本没办法睡</span><span class=\"tl-translation\"> [have no way to sleep]</span>. Already like two, three weeks <span class=\"tl-foreign\">了</span><span class=\"tl-translation\"> [already]</span>.", "ts": "14:23:04"}, {"type": "line", "speaker": "officer", "text": "I am sorry to hear that. May I take your name and contact number so we can follow up with you?", "ts": "14:23:18"}, {"type": "line", "speaker": "caller", "text": "My name is Lim Boon Kiat. <span class=\"tl-foreign\">我的身份证</span><span class=\"tl-translation\"> [my IC]</span> number ending 8821. <span class=\"tl-foreign\">我住在</span><span class=\"tl-translation\"> [I stay at]</span> Blk 47 Buona Vista Road, unit 08-12.", "ts": "14:23:35"}, {"type": "divider", "text": "Caller identified · Mr Lim Boon Kiat · IC ending 8821 · 14:23:35"}, {"type": "line", "speaker": "officer", "text": "Thank you Mr Lim. Can you confirm — is the noise happening every night, and approximately what time does it start and end?", "ts": "14:23:50"}, {"type": "line", "speaker": "caller", "text": "<span class=\"tl-foreign\">几乎每天晚上</span><span class=\"tl-translation\"> [almost every night]</span>. Start around 9pm, sometimes go until midnight or later. Weekend <span class=\"tl-foreign\">也有</span><span class=\"tl-translation\"> [also got]</span>.", "ts": "14:24:02"}, {"type": "line", "speaker": "officer", "text": "Understood. <span class=\"tl-foreign\">我帮你查一下</span><span class=\"tl-translation\"> [let me check for you]</span> — I will place you on hold briefly. I will be back shortly.", "ts": "14:24:18"}, {"type": "line", "speaker": "caller", "text": "<span class=\"tl-foreign\">好的</span><span class=\"tl-translation\"> [okay]</span>, sure.", "ts": "14:24:22"}], "resumed": [{"type": "divider", "text": "Routing confirmed · Enforcement Team C&D · Officer resuming call · 14:25:40"}, {"type": "line", "speaker": "officer", "text": "Thank you for holding, Mr Lim. I have reviewed your complaint.", "ts": "14:25:45"}, {"type": "line", "speaker": "caller", "text": "<span class=\"tl-foreign\">那现在怎样</span><span class=\"tl-translation\"> [so what happens now]</span>? Can do anything or not?", "ts": "14:25:52"}, {"type": "line", "speaker": "officer", "text": "Based on what you have described, the works appear to be occurring outside permitted hours. I will be escalating this to our Enforcement Team who will arrange a site inspection within 2 to 3 working days.", "ts": "14:26:05"}, {"type": "line", "speaker": "caller", "text": "<span class=\"tl-foreign\">哦，就是说</span><span class=\"tl-translation\"> [oh, meaning]</span> they will come and check the site <span class=\"tl-foreign\">是吗</span><span class=\"tl-translation\"> [is it]</span>?", "ts": "14:26:18"}, {"type": "line", "speaker": "officer", "text": "Yes, that is correct. If a violation is confirmed, the contractor may be issued a notice to cease works outside permitted hours. Your complaint reference number is CC-2026-07841 — please keep this for your records.", "ts": "14:26:30"}, {"type": "line", "speaker": "caller", "text": "<span class=\"tl-foreign\">好，好</span><span class=\"tl-translation\"> [okay, okay]</span>. <span class=\"tl-foreign\">那我等你们消息咯</span><span class=\"tl-translation\"> [then I wait for your news lor]</span>. Thank you ah.", "ts": "14:26:44"}, {"type": "line", "speaker": "officer", "text": "You are welcome, Mr Lim. Is there anything else I can help you with today?", "ts": "14:26:50"}, {"type": "line", "speaker": "caller", "text": "No <span class=\"tl-foreign\">没有了</span><span class=\"tl-translation\"> [nothing else]</span>. <span class=\"tl-foreign\">就这样</span><span class=\"tl-translation\"> [that is all]</span>. Bye.", "ts": "14:26:55"}, {"type": "line", "speaker": "officer", "text": "Thank you for calling the National Services Agency. Have a good day, Mr Lim.", "ts": "14:27:02"}]};
+const ANIM_CONFIG = {"wordsPerSecond": 14, "prePauseBase": 400, "prePausePerWord": 40, "interLinePause": 180, "callerSpeedMult": 1.1, "officerSpeedMult": 0.9};
+
+// ── Animation engine ──────────────────────────────────────────────────────────
+// js/animator.js
+// StreamAnimator — replays transcript data arrays as streaming text.
+//
+// Model:
+//   - Each line has a pre-pause (simulates LLM thinking time)
+//   - Text streams in word-by-word at reading pace
+//   - Blinking cursor on the active line while streaming
+//   - Divider lines appear instantly (no animation)
+//   - First visit: animates. Revisit: renders static instantly.
+//   - Mid-stream events fire after specific line indices (e.g. show issue card)
+
+class StreamAnimator {
+  constructor(containerId, lines, opts = {}) {
+    this.containerId  = containerId;
+    this.lines        = lines;
+    this.opts         = {
+      wordsPerSecond:   14,   // fallback only — normally overridden by ANIM_CONFIG
+      prePauseBase:     400,
+      prePausePerWord:  40,
+      interLinePause:   180,
+      callerSpeedMult:  1.1,
+      officerSpeedMult: 0.9,
+      ...opts,               // ANIM_CONFIG values spread here, overriding fallbacks
+    };
+    this.midStreamEvents = opts.midStreamEvents || [];
+    this.timeouts  = [];
+    this.done      = false;
+  }
+
+  // Render all lines instantly (revisit or skip)
+  renderStatic() {
+    const container = document.getElementById(this.containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    this.lines.forEach(line => {
+      container.appendChild(this._buildLine(line, line.text || ''));
+    });
+    this._scrollBottom(container);
+  }
+
+  // Animate lines sequentially
+  play() {
+    if (this.done) { this.renderStatic(); return; }
+    const container = document.getElementById(this.containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    this._animateLine(0, container, 0);
+  }
+
+  stop() {
+    this.timeouts.forEach(t => clearTimeout(t));
+    this.timeouts = [];
+  }
+
+  _animateLine(idx, container, cumulativeDelay) {
+    if (idx >= this.lines.length) {
+      this.done = true;
+      return;
+    }
+    const line = this.lines[idx];
+
+    // Fire any mid-stream events scheduled for this line index
+    this.midStreamEvents
+      .filter(e => e.after_line === idx)
+      .forEach(e => this._scheduleEvent(e, cumulativeDelay));
+
+    if (line.type === 'divider') {
+      // Dividers appear instantly after a short pause
+      const t = setTimeout(() => {
+        container.appendChild(this._buildDivider(line.text));
+        this._scrollBottom(container);
+        this._animateLine(idx + 1, container, 0);
+      }, cumulativeDelay + 200);
+      this.timeouts.push(t);
+      return;
+    }
+
+    // Calculate pacing
+    const words       = this._stripHtml(line.text).split(/\s+/).filter(Boolean);
+    const wordCount   = words.length;
+    const speedMult   = line.speaker === 'caller'
+                        ? this.opts.callerSpeedMult
+                        : this.opts.officerSpeedMult;
+    const prePause    = this.opts.prePauseBase + wordCount * this.opts.prePausePerWord;
+    const msPerWord   = (1000 / this.opts.wordsPerSecond) * speedMult;
+
+    // Build the line element with cursor, append immediately as placeholder
+    const el = this._buildLine(line, '');
+    const textSpan = el.querySelector('.tl-text');
+    const cursor   = document.createElement('span');
+    cursor.className = 'tl-cursor';
+    textSpan.appendChild(cursor);
+
+    // Schedule line appearance after pre-pause
+    const t0 = setTimeout(() => {
+      container.appendChild(el);
+      this._scrollBottom(container);
+
+      // Stream words in
+      // We stream the raw HTML token-by-token (HTML-aware split)
+      const tokens = this._tokenize(line.text);
+      let current  = '';
+
+      tokens.forEach((token, ti) => {
+        const t = setTimeout(() => {
+          current += token;
+          textSpan.innerHTML = current + '<span class="tl-cursor"></span>';
+          this._scrollBottom(container);
+
+          if (ti === tokens.length - 1) {
+            // Final word — remove cursor, schedule next line
+            textSpan.innerHTML = current;
+            const t2 = setTimeout(() => {
+              this._animateLine(idx + 1, container, 0);
+            }, this.opts.interLinePause);
+            this.timeouts.push(t2);
+          }
+        }, cumulativeDelay + prePause + ti * msPerWord);
+        this.timeouts.push(t);
+      });
+
+    }, cumulativeDelay + prePause);
+    this.timeouts.push(t0);
+  }
+
+  _scheduleEvent(event, delay) {
+    const t = setTimeout(() => {
+      if (event.action === 'show_issue') {
+        const panel = document.getElementById('issue-panel');
+        if (panel) {
+          panel.innerHTML = this._buildIssueCard(event);
+        }
+      }
+      if (event.action === 'show_talking_points') {
+        const tp = document.getElementById('talking-points');
+        if (tp) tp.style.display = '';
+      }
+      if (event.action === 'update_caller_tag') {
+        document.querySelectorAll('.caller-pill').forEach(el => {
+          el.style.display = '';
+        });
+      }
+      if (event.action === 'update_audit') {
+        const trail = document.getElementById('audit-trail');
+        if (trail && event.entry) {
+          const item = document.createElement('div');
+          item.className = 'audit-item';
+          const dotClass = event.entry.dot === 'done' ? 'done' : '';
+          item.innerHTML = `
+            <div class="audit-dot ${dotClass}"></div>
+            <div class="audit-content">
+              <div class="audit-label">${event.entry.label}</div>
+              <div class="audit-detail">${event.entry.detail}</div>
+              <div class="audit-time">${event.entry.ts}</div>
+            </div>`;
+          trail.appendChild(item);
+        }
+      }
+    }, delay + 100);
+    this.timeouts.push(t);
+  }
+
+  _buildIssueCard(event) {
+    return `
+      <div class="panel-section-title">Issue Detection</div>
+      <div class="issue-card">
+        <div class="issue-label">Detected Issue</div>
+        <div class="issue-name">${event.issue}</div>
+        <div class="issue-sub">${event.sub}</div>
+        <div class="issue-conf">
+          <div class="conf-bar"><div class="conf-fill" style="width:${event.confidence}%"></div></div>
+          <span class="conf-text">${event.confidence}% confidence</span>
+        </div>
+      </div>`;
+  }
+
+  _buildLine(line, text) {
+    const div = document.createElement('div');
+    div.className = `tl-line ${line.speaker}`;
+    const labelCls = line.speaker === 'caller' ? 'tl-label-caller' : 'tl-label-officer';
+    const label    = line.speaker === 'caller' ? 'CALLER' : 'OFFICER';
+    div.innerHTML = `
+      <span class="${labelCls}">${label}</span>
+      <span class="tl-ts">${line.ts}</span>
+      <span class="tl-text">${text}</span>`;
+    return div;
+  }
+
+  _buildDivider(text) {
+    const div = document.createElement('div');
+    div.className = 'tl-divider';
+    div.innerHTML = `<span>${text}</span>`;
+    return div;
+  }
+
+  _scrollBottom(container) {
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // Strip HTML tags to get plain word count
+  _stripHtml(html) {
+    return html.replace(/<[^>]+>/g, ' ');
+  }
+
+  // Tokenize HTML string into streamable units.
+  // Keeps HTML tags intact (delivered as single tokens),
+  // splits text nodes into individual words.
+  _tokenize(html) {
+    const tokens = [];
+    // Split on HTML tags — keep tags as atomic tokens
+    const parts = html.split(/(<[^>]+>)/);
+    parts.forEach(part => {
+      if (part.startsWith('<')) {
+        tokens.push(part);  // tag: deliver whole
+      } else {
+        // text node: split into words, add trailing space
+        part.split(/(\s+)/).forEach(chunk => {
+          if (chunk) tokens.push(chunk);
+        });
+      }
+    });
+    return tokens.filter(t => t.length > 0);
+  }
+}
+
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+// js/navigation.js
+// Data-driven navigation. All step wiring comes from STEP_REGISTRY.
+// No per-step logic here.
+
+// STEP_REGISTRY is injected by the generator as a JSON literal.
+// Format: { stepId: { transcriptKey: "live"|"resumed"|null, animated: bool } }
+// TRANSCRIPT_DATA is also injected: { "live": [...], "resumed": [...] }
+
+let current = 1;
+const animators  = {};   // stepId → StreamAnimator instance
+const visitedSet = new Set();  // steps already animated once
+
+function goTo(n) {
+  // Hide current
+  const prev = document.querySelector('.step-panel.visible');
+  if (prev) prev.classList.remove('visible');
+
+  // Show target
+  const next = document.querySelector(`.step-panel[data-step="${n}"]`);
+  if (!next) return;
+  next.classList.add('visible');
+  current = n;
+
+  // Scroll static chat panels to bottom
+  const msgs = next.querySelector('.chat-messages:not([id^="transcript"])');
+  if (msgs) setTimeout(() => { msgs.scrollTop = msgs.scrollHeight; }, 20);
+
+  // Handle animated steps
+  const reg = STEP_REGISTRY[n];
+  if (reg && reg.animated) {
+    const key   = reg.transcriptKey;
+    const lines = TRANSCRIPT_DATA[key];
+    if (!animators[n]) {
+      animators[n] = new StreamAnimator(
+        `transcript-${n}`,
+        lines,
+        { ...ANIM_CONFIG, midStreamEvents: reg.midStreamEvents || [] }
+      );
+    }
+    const anim = animators[n];
+    if (visitedSet.has(n)) {
+      anim.renderStatic();
+    } else {
+      visitedSet.add(n);
+      anim.play();
+    }
+  }
+
+  // Stop any running animator on step we're leaving
+  if (animators[current] && current !== n) {
+    animators[current].stop();
+  }
+}
+
+// Escape → reset to step 1 for demo restart
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    // Clear visited set so animations replay from scratch
+    visitedSet.clear();
+    Object.values(animators).forEach(a => { a.stop(); a.done = false; });
+    goTo(1);
+  }
+});
+
+// Start on step 1
+goTo(1);
+
+</script>
+</body>
+</html>
